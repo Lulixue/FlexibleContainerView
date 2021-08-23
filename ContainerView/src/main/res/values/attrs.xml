@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="ContainerView">
+        <attr name="itemPadding" format="dimension"/>
+        <attr name="itemPaddingStart" format="dimension" />
+        <attr name="itemPaddingEnd" format="dimension" />
+        <attr name="itemPaddingTop" format="dimension"/>
+        <attr name="itemPaddingBottom" format="dimension"/>
+        <attr name="enableLazyLoading" format="boolean" />
+    </declare-styleable>
+</resources>
