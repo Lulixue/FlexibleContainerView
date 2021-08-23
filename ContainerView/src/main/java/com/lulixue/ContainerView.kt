@@ -4,20 +4,23 @@ import android.content.Context
 import android.content.res.Resources
 import android.graphics.Color
 import android.graphics.Rect
-import android.icu.text.DateTimePatternGenerator
 import android.util.AttributeSet
 import android.util.TypedValue
-import android.view.Display
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.core.view.children
 import androidx.core.view.isVisible
 import kotlin.math.max
-import kotlin.math.min
 
 class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context, attrs) {
     constructor(context: Context) : this(context, null)
+
+    enum class ContentAlignment(val value: Int) {
+        left(0),
+        center(1),
+        right(2)
+    }
     companion object {
         private val DisplayWidth: Int
             get() = Resources.getSystem().displayMetrics.widthPixels
@@ -48,7 +51,6 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
         private val DEFAULT_ITEM_SPACING = 3.dp.toInt()
         private val DEFAULT_LINE_SPACING = 5.dp.toInt()
     }
-
     private val childrenBounds = mutableListOf<Rect>()
     private val childrenBoundMap = LinkedHashMap<Int, ArrayList<Rect>>()
     private val childrenBoundMaxHeight = LinkedHashMap<Int, Int>()
@@ -67,11 +69,26 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
             field = value
             requestLayout()
         }
-    var loadMoreView: View = TextView(context).apply {
+
+    var contentAlignment: ContentAlignment = ContentAlignment.center
+        set(value) {
+            field = value
+            requestLayout()
+        }
+
+    var loadMoreView: TextView = TextView(context).apply {
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 16F)
         setTextColor(Color.BLUE)
+        text = loadMoreText
         layoutParams = MarginLayoutParams(MarginLayoutParams.WRAP_CONTENT, MarginLayoutParams.WRAP_CONTENT)
     }
+
+    var loadMoreText = "More..."
+        set(value) {
+            field = value
+            loadMoreView.text = value
+        }
+
 
     init {
         attrs?.also {
@@ -181,6 +198,15 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
         if (lineWidthUsed > paddingStart) {
             maxWidthUsed = max(maxWidthUsed, lineWidthUsed-itemSpacing)
         }
+        val viewsWidth = maxWidthUsed + paddingEnd
+        val widthMatchParent = layoutParams.width != LayoutParams.WRAP_CONTENT
+        val selfWidth = if (widthMatchParent) {
+            specWidthSize
+        } else {
+            viewsWidth
+        }
+
+
         // vertically center all views in the line
         childrenBoundMaxHeight[mapIndex] = lineMaxHeight
         for ((index, bounds) in childrenBoundMap.entries) {
@@ -191,14 +217,23 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
                     bound.bottom += (maxHeight - bound.height()) / 2
                 }
             }
+            val offset: Int = when (contentAlignment) {
+                ContentAlignment.center -> {
+                    (selfWidth - bounds.last().right) / 2
+                }
+                ContentAlignment.right -> {
+                    (selfWidth - bounds.last().right)
+                }
+                ContentAlignment.left -> {
+                    continue
+                }
+            }
+            for (bound in bounds) {
+                bound.left += offset
+                bound.right += offset
+            }
         }
-        val viewsWidth = maxWidthUsed + paddingEnd
-        val widthMatchParent = layoutParams.width != LayoutParams.WRAP_CONTENT
-        val selfWidth = if (widthMatchParent) {
-            specWidthSize
-        } else {
-            viewsWidth
-        }
+
         val selfHeight = heightUsed + lineMaxHeight + paddingBottom
         setMeasuredDimension(selfWidth, selfHeight)
     }
