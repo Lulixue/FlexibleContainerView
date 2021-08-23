@@ -4,8 +4,10 @@ import android.content.Context
 import android.content.res.Resources
 import android.graphics.Color
 import android.graphics.Rect
+import android.icu.text.DateTimePatternGenerator
 import android.util.AttributeSet
 import android.util.TypedValue
+import android.view.Display
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
@@ -17,6 +19,8 @@ import kotlin.math.min
 class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context, attrs) {
     constructor(context: Context) : this(context, null)
     companion object {
+        private val DisplayWidth: Int
+            get() = Resources.getSystem().displayMetrics.widthPixels
         private val Float.dp
             get() = TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP, this, Resources.getSystem().displayMetrics
@@ -112,7 +116,7 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
         val specWidthSize = MeasureSpec.getSize(widthMeasureSpec)       // 父view宽度
         val specWidthMode = MeasureSpec.getMode(widthMeasureSpec)       // 父view宽度模式
 
-        var maxWidthUsed = 0
+        var maxWidthUsed = paddingStart
         var heightUsed = paddingTop
         var lineWidthUsed = paddingStart
         var lineMaxHeight = 0
@@ -135,7 +139,11 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
                 // parent width is not enough to fill one view
                 if (child.tag != VIEW_NEW_LINE && (lineWidthUsed == paddingStart)) {
                     child.layoutParams.width = leftWidth
+                    maxWidthUsed = leftWidth
                 } else {
+                    if (lineWidthUsed > paddingStart) {
+                        maxWidthUsed = max(maxWidthUsed, lineWidthUsed-itemSpacing)
+                    }
                     lineWidthUsed = paddingStart
                     heightUsed += lineMaxHeight
                     if (child.tag != VIEW_NEW_LINE) {
@@ -163,7 +171,6 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
             )
             getMapChildren(mapIndex).add(childBounds)
             lineWidthUsed += measuredWidth + itemSpacing
-            maxWidthUsed = max(maxWidthUsed, lineWidthUsed)
             lineMaxHeight = max(lineMaxHeight, measuredHeight)
             measuredView.setVisible(true)
             if (measuredView == loadMoreView) {
@@ -171,6 +178,10 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
             }
         }
 
+        if (lineWidthUsed > paddingStart) {
+            maxWidthUsed = max(maxWidthUsed, lineWidthUsed-itemSpacing)
+        }
+        // vertically center all views in the line
         childrenBoundMaxHeight[mapIndex] = lineMaxHeight
         for ((index, bounds) in childrenBoundMap.entries) {
             val maxHeight = childrenBoundMaxHeight[index]!!
@@ -182,7 +193,7 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
             }
         }
         val viewsWidth = maxWidthUsed + paddingEnd
-        val widthMatchParent = layoutParams.width == LayoutParams.MATCH_PARENT
+        val widthMatchParent = layoutParams.width != LayoutParams.WRAP_CONTENT
         val selfWidth = if (widthMatchParent) {
             specWidthSize
         } else {
