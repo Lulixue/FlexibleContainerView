@@ -34,23 +34,35 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
         fun getSeparatorView(context: Context, height: Int): View {
             return View(context).apply {
                 tag = VIEW_NEW_LINE
-                layoutParams = MarginLayoutParams(height, MarginLayoutParams.WRAP_CONTENT)
+                layoutParams = MarginLayoutParams(MarginLayoutParams.WRAP_CONTENT, height)
             }
         }
         fun getNewLineView(context: Context): View {
             return getSeparatorView(context, 0)
         }
+
+        private val DEFAULT_ITEM_SPACING = 3.dp.toInt()
+        private val DEFAULT_LINE_SPACING = 5.dp.toInt()
     }
 
     private val childrenBounds = mutableListOf<Rect>()
     private val childrenBoundMap = LinkedHashMap<Int, ArrayList<Rect>>()
     private val childrenBoundMaxHeight = LinkedHashMap<Int, Int>()
-    private var itemPadding = 1.dp.toInt().rect
-    var enableLazyLoading = false
-    set(value) {
-        field = value
-        requestLayout()
-    }
+    var itemSpacing: Int = DEFAULT_ITEM_SPACING
+        set(value) {
+            field = value
+            requestLayout()
+        }
+    var lineSpacing: Int = DEFAULT_LINE_SPACING
+        set(value) {
+            field = value
+            requestLayout()
+        }
+    var enableLazyLoading: Boolean = false
+        set(value) {
+            field = value
+            requestLayout()
+        }
     var loadMoreView: View = TextView(context).apply {
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 16F)
         setTextColor(Color.BLUE)
@@ -60,11 +72,8 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
     init {
         attrs?.also {
             val typedArray = context.obtainStyledAttributes(attrs, R.styleable.ContainerView)
-            itemPadding = typedArray.getDimensionPixelSize(R.styleable.ContainerView_itemPadding, 1.dp.toInt()).rect
-            itemPadding.left = typedArray.getDimensionPixelOffset(R.styleable.ContainerView_itemPaddingStart, itemPadding.left)
-            itemPadding.right = typedArray.getDimensionPixelOffset(R.styleable.ContainerView_itemPaddingEnd, itemPadding.right)
-            itemPadding.top = typedArray.getDimensionPixelOffset(R.styleable.ContainerView_itemPaddingTop, itemPadding.top)
-            itemPadding.bottom = typedArray.getDimensionPixelOffset(R.styleable.ContainerView_itemPaddingBottom, itemPadding.bottom)
+            itemSpacing = typedArray.getDimensionPixelSize(R.styleable.ContainerView_itemSpacing, DEFAULT_ITEM_SPACING)
+            lineSpacing = typedArray.getDimensionPixelOffset(R.styleable.ContainerView_lineSpacing, DEFAULT_LINE_SPACING)
             enableLazyLoading = typedArray.getBoolean(R.styleable.ContainerView_enableLazyLoading, false)
             typedArray.recycle()
         }
@@ -81,17 +90,6 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
         super.addView(child, index, params)
         childrenBounds.add(Rect())
         child.setVisible(false)
-    }
-
-    fun setItemPadding(padding: Int) {
-        setItemPadding(padding, padding, padding, padding)
-    }
-    fun setItemPadding(left: Int, top: Int, right: Int, bottom: Int) {
-        itemPadding.left = left
-        itemPadding.right = right
-        itemPadding.top = top
-        itemPadding.bottom = bottom
-        requestLayout()
     }
 
     private fun getMapChildren(index: Int) : ArrayList<Rect> {
@@ -115,8 +113,8 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
         val specWidthMode = MeasureSpec.getMode(widthMeasureSpec)       // 父view宽度模式
 
         var maxWidthUsed = 0
-        var heightUsed = paddingTop + itemPadding.top
-        var lineWidthUsed = paddingStart + itemPadding.left
+        var heightUsed = paddingTop
+        var lineWidthUsed = paddingStart
         var lineMaxHeight = 0
         var mapIndex = 0
 
@@ -130,21 +128,24 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
 
         for ((index, child) in children.withIndex()) {
             measureChildWithMargins(child, widthMeasureSpec, 0, heightMeasureSpec, 0)
-            leftWidth = specWidthSize - (paddingEnd + lineWidthUsed + itemPadding.right)
+            leftWidth = specWidthSize - (paddingEnd + lineWidthUsed)
 
             measuredView = child
             if (child.tag == VIEW_NEW_LINE || (specWidthMode != MeasureSpec.UNSPECIFIED && leftWidth < child.measuredWidth)) {
-                // 当前控件宽度不足以安放一个子view
-                if (child.tag != VIEW_NEW_LINE && (lineWidthUsed == paddingStart + itemPadding.left)) {
+                // parent width is not enough to fill one view
+                if (child.tag != VIEW_NEW_LINE && (lineWidthUsed == paddingStart)) {
                     child.layoutParams.width = leftWidth
                 } else {
-                    lineWidthUsed = paddingStart + itemPadding.left
-                    heightUsed += lineMaxHeight + itemPadding.top
+                    lineWidthUsed = paddingStart
+                    heightUsed += lineMaxHeight
+                    if (child.tag != VIEW_NEW_LINE) {
+                        heightUsed += lineSpacing
+                    }
                     childrenBoundMaxHeight[mapIndex] = lineMaxHeight
                     lineMaxHeight = 0
                     mapIndex++
                     measureChildWithMargins(child, widthMeasureSpec, 0, heightMeasureSpec, 0)
-                    leftWidth = specWidthSize - (paddingEnd + lineWidthUsed + itemPadding.right)
+                    leftWidth = specWidthSize - (paddingEnd + lineWidthUsed)
                 }
             }
             if (child == loadMoreView) {
@@ -161,7 +162,7 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
                 heightUsed + measuredHeight
             )
             getMapChildren(mapIndex).add(childBounds)
-            lineWidthUsed += measuredWidth + itemPadding.right
+            lineWidthUsed += measuredWidth + itemSpacing
             maxWidthUsed = max(maxWidthUsed, lineWidthUsed)
             lineMaxHeight = max(lineMaxHeight, measuredHeight)
             measuredView.setVisible(true)
@@ -180,14 +181,14 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
                 }
             }
         }
-        val viewsWidth = maxWidthUsed + paddingEnd + itemPadding.right
+        val viewsWidth = maxWidthUsed + paddingEnd
         val widthMatchParent = layoutParams.width == LayoutParams.MATCH_PARENT
         val selfWidth = if (widthMatchParent) {
             specWidthSize
         } else {
             viewsWidth
         }
-        val selfHeight = heightUsed + lineMaxHeight + paddingBottom + itemPadding.bottom
+        val selfHeight = heightUsed + lineMaxHeight + paddingBottom
         setMeasuredDimension(selfWidth, selfHeight)
     }
 

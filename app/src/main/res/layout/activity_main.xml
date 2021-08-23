@@ -7,10 +7,9 @@
     tools:context=".MainActivity">
 
     <com.lulixue.ContainerView
-        app:itemPaddingStart="5dp"
-        app:itemPaddingEnd="5dp"
-        app:itemPaddingTop="1dp"
-        app:itemPaddingBottom="1dp"
+        android:padding="5dp"
+        app:itemSpacing="5dp"
+        app:lineSpacing="10dp"
         android:id="@+id/containerView"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
