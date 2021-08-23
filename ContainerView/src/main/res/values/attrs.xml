@@ -8,9 +8,9 @@
         <!-- enable lazy loading, lore partially for scrollView -->
         <attr name="enableLazyLoading" format="boolean" />
         <attr name="contentAlignment" format="enum" >
-            <enum name="left" value="0" />
+            <enum name="start" value="0" />
             <enum name="center" value="1" />
-            <enum name="right" value="2" />
+            <enum name="end" value="2" />
         </attr>
     </declare-styleable>
 </resources>

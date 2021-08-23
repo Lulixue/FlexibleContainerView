@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">FlexibleContainerView</string>
+    <string name="containerview_scrollview">ContainerView + ScrollView</string>
+    <string name="containerview">ContainerView</string>
 </resources>

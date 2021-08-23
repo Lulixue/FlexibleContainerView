@@ -17,9 +17,9 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
     constructor(context: Context) : this(context, null)
 
     enum class ContentAlignment(val value: Int) {
-        left(0),
-        center(1),
-        right(2)
+        Start(0),
+        Center(1),
+        End(2)
     }
     companion object {
         private val DisplayWidth: Int
@@ -56,22 +56,34 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
     private val childrenBoundMaxHeight = LinkedHashMap<Int, Int>()
     var itemSpacing: Int = DEFAULT_ITEM_SPACING
         set(value) {
+            if (value == field) {
+                return
+            }
             field = value
             requestLayout()
         }
     var lineSpacing: Int = DEFAULT_LINE_SPACING
         set(value) {
+            if (value == field) {
+                return
+            }
             field = value
             requestLayout()
         }
     var enableLazyLoading: Boolean = false
         set(value) {
+            if (value == field) {
+                return
+            }
             field = value
             requestLayout()
         }
 
-    var contentAlignment: ContentAlignment = ContentAlignment.center
+    var contentAlignment: ContentAlignment = ContentAlignment.Start
         set(value) {
+            if (value == field) {
+                return
+            }
             field = value
             requestLayout()
         }
@@ -218,13 +230,13 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
                 }
             }
             val offset: Int = when (contentAlignment) {
-                ContentAlignment.center -> {
+                ContentAlignment.Center -> {
                     (selfWidth - bounds.last().right) / 2
                 }
-                ContentAlignment.right -> {
-                    (selfWidth - bounds.last().right)
+                ContentAlignment.End -> {
+                    (selfWidth - bounds.last().right - paddingEnd)
                 }
-                ContentAlignment.left -> {
+                ContentAlignment.Start -> {
                     continue
                 }
             }

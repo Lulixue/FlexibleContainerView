@@ -6,7 +6,9 @@ import android.os.Bundle
 import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
+import android.widget.RadioButton
 import android.widget.TextView
+import com.google.android.material.tabs.TabLayout
 import com.lulixue.ContainerView
 import com.lulixue.flexiblecontainerview.databinding.ActivityMainBinding
 import kotlin.random.Random
@@ -31,19 +33,75 @@ fun getRandomSize(): Float {
     return TEXT_SIZES[next]
 }
 
+fun View.setVisible(visible: Boolean) {
+    this.visibility = if (visible) View.VISIBLE else View.GONE
+}
+
 class MainActivity : AppCompatActivity() {
 
-
-
     private lateinit var binding: ActivityMainBinding
+    private val radioButtons: Array<RadioButton> by lazy {
+        arrayOf(binding.leftRadio, binding.centerRadio, binding.rightRadio)
+    }
+    private var contentAlignment = ContainerView.ContentAlignment.Start
+        set(value) {
+            field = value
+            binding.containerView.contentAlignment = value
+            binding.nestContainerView.contentAlignment = value
+        }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         fillSplitTextViews()
+        fillScrollTextView()
+
+        binding.leftRadio.setOnClickListener {
+            val radio = it as RadioButton
+            checkRadio(radio)
+            contentAlignment = ContainerView.ContentAlignment.Start
+        }
+        binding.centerRadio.setOnClickListener {
+            val radio = it as RadioButton
+            checkRadio(radio)
+            contentAlignment = ContainerView.ContentAlignment.Center
+        }
+        binding.rightRadio.setOnClickListener {
+            val radio = it as RadioButton
+            checkRadio(radio)
+            contentAlignment = ContainerView.ContentAlignment.End
+        }
+
+        binding.tabViewMode.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab?) {
+                val scroll = binding.tabViewMode.selectedTabPosition == 1
+                binding.scrollView.setVisible(scroll)
+                binding.containerView.setVisible(!scroll)
+            }
+
+            override fun onTabUnselected(tab: TabLayout.Tab?) {
+            }
+
+            override fun onTabReselected(tab: TabLayout.Tab?) {
+            }
+
+        })
     }
 
-    private fun fillSplitTextViews() {
+    private fun checkRadio(radio: RadioButton) {
+        radioButtons.forEach {
+            it.isChecked = it == radio
+        }
+    }
+
+    private fun fillScrollTextView() {
+        val views = ArrayList<View>()
+        views.addAll(getSplitTextViews())
+        views.addAll(getSplitTextViews())
+        binding.nestContainerView.addSubviews(views)
+    }
+
+    private fun getSplitTextViews(): List<View> {
         val split = LOREM_IPSUM.split(" ").filter { it.isNotEmpty() }
 
         val views = ArrayList<View>()
@@ -65,6 +123,11 @@ class MainActivity : AppCompatActivity() {
                 })
             }
         }
+        return views
+    }
+
+    private fun fillSplitTextViews() {
+        val views = getSplitTextViews()
         binding.containerView.addSubviews(views)
     }
 
