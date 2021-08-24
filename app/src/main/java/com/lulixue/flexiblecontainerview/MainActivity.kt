@@ -1,6 +1,8 @@
 package com.lulixue.flexiblecontainerview
 
 import android.graphics.Color
+import android.graphics.drawable.Drawable
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.TypedValue
@@ -8,6 +10,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.RadioButton
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import com.google.android.material.tabs.TabLayout
 import com.lulixue.ContainerView
 import com.lulixue.flexiblecontainerview.databinding.ActivityMainBinding
@@ -15,7 +19,6 @@ import com.lulixue.flexiblecontainerview.databinding.CircleViewBinding
 import com.lulixue.flexiblecontainerview.databinding.RectViewBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
@@ -62,6 +65,9 @@ class MainActivity : AppCompatActivity() {
     private val radioButtons: Array<RadioButton> by lazy {
         arrayOf(binding.leftRadio, binding.centerRadio, binding.rightRadio)
     }
+    private val rippleBackground: Drawable? by lazy {
+        ContextCompat.getDrawable(this, R.drawable.ripple_effect_corner)
+    }
     private var contentAlignment = ContainerView.ContentAlignment.Start
         set(value) {
             field = value
@@ -97,6 +103,19 @@ class MainActivity : AppCompatActivity() {
             contentType = ContentType.Shape
         }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            binding.scrollView.setOnScrollChangeListener { _, _, scrollY, _, _ ->
+                run {
+                    val scrollView = binding.scrollView
+                    val diff: Int = scrollView.getChildAt(0).bottom - (scrollView.height + scrollView.scrollY)
+                    if (diff == 0) {
+                        scrollView.post {
+                            binding.nestContainerView.loadMore()
+                        }
+                    }
+                }
+            }
+        }
         binding.tabViewMode.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 val scroll = binding.tabViewMode.selectedTabPosition == 1
@@ -167,7 +186,10 @@ class MainActivity : AppCompatActivity() {
 
         val views = ArrayList<View>()
         for (single in split) {
-            views.add(getShapeView(container, single))
+            val view = getShapeView(container, single)
+            setViewClickListener(view, single)
+
+            views.add(view)
             if (single.contains(".")) {
                 views.add(ContainerView.getNewLineView(this).apply {
                     setBackgroundColor(getRandomColor())
@@ -177,21 +199,31 @@ class MainActivity : AppCompatActivity() {
         return views
     }
 
+    private fun setViewClickListener(view: View, text: String) {
+        view.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("Info")
+                .setMessage("Clicked $text")
+                .create().show()
+        }
+    }
+
     private fun getSplitTextViews(): List<View> {
         val split = LOREM_IPSUM.split(" ").filter { it.isNotEmpty() }
 
         val views = ArrayList<View>()
-        val lp = ViewGroup.MarginLayoutParams(
-            ViewGroup.MarginLayoutParams.WRAP_CONTENT,
-            ViewGroup.MarginLayoutParams.WRAP_CONTENT
-        )
         for (single in split) {
             val view = TextView(this).apply {
-                layoutParams = lp
+                layoutParams = ViewGroup.MarginLayoutParams(
+                    ViewGroup.MarginLayoutParams.WRAP_CONTENT,
+                    ViewGroup.MarginLayoutParams.WRAP_CONTENT
+                )
+                background = ContextCompat.getDrawable(this@MainActivity, R.drawable.ripple_effect_corner)
                 setTextColor(getRandomColor())
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, getRandomSize())
                 text = single
             }
+            setViewClickListener(view, single)
             views.add(view)
             if (single.contains(".")) {
                 views.add(ContainerView.getNewLineView(this).apply {

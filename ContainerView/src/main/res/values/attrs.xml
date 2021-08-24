@@ -5,8 +5,14 @@
         <attr name="lineSpacing" format="dimension"/>
         <!-- spacing between items horizontally-->
         <attr name="itemSpacing" format="dimension"/>
-        <!-- enable lazy loading, lore partially for scrollView -->
+        <!-- enable lazy loading, lore partially for scrollView, default is false -->
         <attr name="enableLazyLoading" format="boolean" />
+        <!-- with lazy loading enabled, init load item count -->
+        <attr name="initLazyLoadItemSize" format="integer" />
+        <attr name="lazyLoadMoreItemSize" format="integer" />
+        <!-- load more text, "More..." as default -->
+        <attr name="loadMoreText" format="string" />
+        <!-- Content Alignment -->
         <attr name="contentAlignment" format="enum" >
             <enum name="start" value="0" />
             <enum name="center" value="1" />

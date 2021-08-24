@@ -2,13 +2,6 @@
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     tools:targetApi="lollipop" android:color="@color/light_grey">
-    <item >
-        <shape android:shape="rectangle">
-            <corners android:radius="5dp" />
-            <stroke android:color="@color/cardview_dark_background"
-                android:width="1dp" />
-        </shape>
-    </item>
     <item android:id="@android:id/mask">
         <shape android:shape="rectangle">
             <corners android:radius="5dp" />

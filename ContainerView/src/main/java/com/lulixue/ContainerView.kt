@@ -5,13 +5,17 @@ import android.content.res.Resources
 import android.graphics.Color
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.Typeface
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.core.view.children
 import androidx.core.view.isVisible
+import androidx.core.view.setPadding
+import java.lang.ref.WeakReference
 import kotlin.math.max
 
 class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context, attrs) {
@@ -35,6 +39,9 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
         private val Int.dp
             get() = this.toFloat().dp
 
+        private const val DEFAULT_LOAD_MORE_TEXT = "More..."
+        private const val DEFAULT_INIT_LAZY_ITEM_SIZE = 150
+        private const val DEFAULT_LAZY_LOAD_ITEM_SIZE = 50
         private const val VIEW_NEW_LINE = "NewLine"
         fun getSeparatorView(context: Context, height: Int): View {
             return View(context).apply {
@@ -49,6 +56,7 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
         private val DEFAULT_ITEM_SPACING = 3.dp.toInt()
         private val DEFAULT_LINE_SPACING = 5.dp.toInt()
     }
+    private val lazyLoadViews = LinkedHashMap<View, Boolean>()
     private val childrenBounds = mutableListOf<RectF>()
     private val childrenBoundMap = LinkedHashMap<Int, ArrayList<RectF>>()
     private val childrenBoundMaxHeight = LinkedHashMap<Int, Int>()
@@ -76,6 +84,20 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
             field = value
             requestLayout()
         }
+    var initLazyLoadItemSize: Int = DEFAULT_INIT_LAZY_ITEM_SIZE
+        set(value) {
+            if (value == field) {
+                return
+            }
+            field = value
+        }
+    var lazyLoadMoreItemSize: Int = DEFAULT_LAZY_LOAD_ITEM_SIZE
+        set(value) {
+            if (value == field) {
+                return
+            }
+            field = value
+        }
 
     var contentAlignment: ContentAlignment = ContentAlignment.Start
         set(value) {
@@ -86,26 +108,38 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
             requestLayout()
         }
 
-    var loadMoreView: TextView = TextView(context).apply {
+    var loadMoreView: View = TextView(context).apply {
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 16F)
-        setTextColor(Color.BLUE)
+        setTextColor(Color.WHITE)
+        setTypeface(Typeface.DEFAULT, Typeface.ITALIC)
+        setPadding(5.dp.toInt())
         text = loadMoreText
+        background = ContextCompat.getDrawable(context, R.drawable.load_more_bg)
         layoutParams = MarginLayoutParams(MarginLayoutParams.WRAP_CONTENT, MarginLayoutParams.WRAP_CONTENT)
     }
+    set(value) {
+        field = value
+        value.setOnClickListener { loadMore() }
+    }
 
-    var loadMoreText = "More..."
+    var loadMoreText = DEFAULT_LOAD_MORE_TEXT
         set(value) {
             field = value
-            loadMoreView.text = value
+            if (loadMoreView is TextView) {
+                (loadMoreView as TextView).text = value
+            }
         }
 
-
     init {
+        loadMoreView.setOnClickListener { loadMore() }
         attrs?.also {
             val typedArray = context.obtainStyledAttributes(attrs, R.styleable.ContainerView)
             itemSpacing = typedArray.getDimensionPixelSize(R.styleable.ContainerView_itemSpacing, DEFAULT_ITEM_SPACING)
             lineSpacing = typedArray.getDimensionPixelOffset(R.styleable.ContainerView_lineSpacing, DEFAULT_LINE_SPACING)
             enableLazyLoading = typedArray.getBoolean(R.styleable.ContainerView_enableLazyLoading, false)
+            loadMoreText = typedArray.getString(R.styleable.ContainerView_loadMoreText) ?: DEFAULT_LOAD_MORE_TEXT
+            initLazyLoadItemSize = typedArray.getInteger(R.styleable.ContainerView_initLazyLoadItemSize, DEFAULT_INIT_LAZY_ITEM_SIZE)
+            lazyLoadMoreItemSize = typedArray.getInteger(R.styleable.ContainerView_lazyLoadMoreItemSize, DEFAULT_LAZY_LOAD_ITEM_SIZE)
             typedArray.recycle()
         }
     }
@@ -115,12 +149,17 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
         childrenBounds.clear()
         childrenBoundMaxHeight.clear()
         childrenBoundMap.clear()
+        lazyLoadViews.clear()
     }
 
     override fun addView(child: View, index: Int, params: LayoutParams?) {
         super.addView(child, index, params)
         childrenBounds.add(RectF())
         child.setVisible(false)
+
+        if (enableLazyLoading) {
+            lazyLoadViews[child] = true
+        }
     }
 
     private fun getMapChildren(index: Int) : ArrayList<RectF> {
@@ -132,10 +171,36 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
         return newChildren
     }
 
+    fun loadMore() {
+        removeView(loadMoreView)
+        var addedCount = 0
+        for ((view, added) in lazyLoadViews) {
+            if (!added) {
+                addView(view)
+                addedCount ++
+                if (addedCount >= lazyLoadMoreItemSize) {
+                    addView(loadMoreView)
+                    return
+                }
+            }
+        }
+    }
+
     fun addSubviews(views: List<View>) {
         removeAllViews()
+        var addView = true
         for (view in views) {
-            addView(view)
+            if (addView) {
+                addView(view)
+                if (enableLazyLoading && children.count() >= initLazyLoadItemSize) {
+                    addView(loadMoreView)
+                    addView = false
+                }
+                continue
+            }
+            if (enableLazyLoading) {
+                lazyLoadViews[view] = false
+            }
         }
     }
 
@@ -200,8 +265,12 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
             lineWidthUsed += measuredWidth + itemSpacing
             lineMaxHeight = max(lineMaxHeight, measuredHeight)
             measuredView.setVisible(true)
-            if (measuredView == loadMoreView) {
-                break
+
+            if (enableLazyLoading) {
+                lazyLoadViews[child] = true
+                if (measuredView == loadMoreView) {
+                    break
+                }
             }
         }
 
