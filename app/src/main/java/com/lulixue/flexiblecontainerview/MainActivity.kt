@@ -11,6 +11,13 @@ import android.widget.TextView
 import com.google.android.material.tabs.TabLayout
 import com.lulixue.ContainerView
 import com.lulixue.flexiblecontainerview.databinding.ActivityMainBinding
+import com.lulixue.flexiblecontainerview.databinding.CircleViewBinding
+import com.lulixue.flexiblecontainerview.databinding.RectViewBinding
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
 const val LOREM_IPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod " +
@@ -20,7 +27,7 @@ const val LOREM_IPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit
         "cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat " +
         "non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
 
-val TEXT_COLORS = arrayOf(Color.BLACK, Color.BLUE, Color.RED, Color.GRAY, Color.GREEN, Color.YELLOW)
+val TEXT_COLORS = arrayOf(Color.BLACK, Color.BLUE, Color.RED, Color.GRAY, Color.DKGRAY, Color.CYAN, Color.MAGENTA)
 val TEXT_SIZES = arrayOf(14f, 15f, 16f, 17f, 18f, 19f)
 
 fun getRandomColor(): Int {
@@ -37,8 +44,20 @@ fun View.setVisible(visible: Boolean) {
     this.visibility = if (visible) View.VISIBLE else View.GONE
 }
 
-class MainActivity : AppCompatActivity() {
+enum class ContentType {
+    Text,
+    Shape
+}
 
+class MainActivity : AppCompatActivity() {
+    private var contentType: ContentType = ContentType.Text
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            refreshContainerViews()
+        }
     private lateinit var binding: ActivityMainBinding
     private val radioButtons: Array<RadioButton> by lazy {
         arrayOf(binding.leftRadio, binding.centerRadio, binding.rightRadio)
@@ -53,9 +72,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        fillSplitTextViews()
-        fillScrollTextView()
-
         binding.leftRadio.setOnClickListener {
             val radio = it as RadioButton
             checkRadio(radio)
@@ -72,6 +88,15 @@ class MainActivity : AppCompatActivity() {
             contentAlignment = ContainerView.ContentAlignment.End
         }
 
+        binding.textRadio.setOnClickListener {
+            binding.shapeRadio.isChecked = false
+            contentType = ContentType.Text
+        }
+        binding.shapeRadio.setOnClickListener {
+            binding.textRadio.isChecked = false
+            contentType = ContentType.Shape
+        }
+
         binding.tabViewMode.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 val scroll = binding.tabViewMode.selectedTabPosition == 1
@@ -86,6 +111,30 @@ class MainActivity : AppCompatActivity() {
             }
 
         })
+        refreshContainerViews()
+    }
+
+    private fun refreshContainerViews() {
+        GlobalScope.launch(Dispatchers.Default) {
+            val views = ArrayList<View>()
+            val viewsSplit = ArrayList<View>()
+            when (contentType) {
+                ContentType.Text -> {
+                    views.addAll(getSplitTextViews())
+                    views.addAll(getSplitTextViews())
+                    viewsSplit.addAll(getSplitTextViews())
+                }
+                else -> {
+                    views.addAll(getSplitShapeViews(binding.nestContainerView))
+                    viewsSplit.addAll(getSplitShapeViews(binding.containerView))
+                }
+            }
+
+            withContext(Dispatchers.Main) {
+                binding.containerView.addSubviews(viewsSplit)
+                binding.nestContainerView.addSubviews(views)
+            }
+        }
     }
 
     private fun checkRadio(radio: RadioButton) {
@@ -94,11 +143,38 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun fillScrollTextView() {
+    private fun getShapeView(container: ContainerView, text: String): View {
+        return when (Random.nextInt(2)) {
+            0 -> {
+                val binding = RectViewBinding.inflate(layoutInflater, container, false)
+                binding.text.text = text
+                binding.text.setTextColor(getRandomColor())
+                binding.text.setTextSize(TypedValue.COMPLEX_UNIT_SP, getRandomSize())
+                binding.root
+            }
+            else -> {
+                val binding = CircleViewBinding.inflate(layoutInflater, container, false)
+                binding.text.text = text
+                binding.text.setTextColor(getRandomColor())
+                binding.text.setTextSize(TypedValue.COMPLEX_UNIT_SP, getRandomSize())
+                binding.root
+            }
+        }
+    }
+
+    private fun getSplitShapeViews(container: ContainerView): List<View> {
+        val split = LOREM_IPSUM.split(" ").filter { it.isNotEmpty() }
+
         val views = ArrayList<View>()
-        views.addAll(getSplitTextViews())
-        views.addAll(getSplitTextViews())
-        binding.nestContainerView.addSubviews(views)
+        for (single in split) {
+            views.add(getShapeView(container, single))
+            if (single.contains(".")) {
+                views.add(ContainerView.getNewLineView(this).apply {
+                    setBackgroundColor(getRandomColor())
+                })
+            }
+        }
+        return views
     }
 
     private fun getSplitTextViews(): List<View> {
@@ -112,9 +188,9 @@ class MainActivity : AppCompatActivity() {
         for (single in split) {
             val view = TextView(this).apply {
                 layoutParams = lp
+                setTextColor(getRandomColor())
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, getRandomSize())
                 text = single
-                setTextColor(getRandomColor())
             }
             views.add(view)
             if (single.contains(".")) {
@@ -126,10 +202,6 @@ class MainActivity : AppCompatActivity() {
         return views
     }
 
-    private fun fillSplitTextViews() {
-        val views = getSplitTextViews()
-        binding.containerView.addSubviews(views)
-    }
 
 
 

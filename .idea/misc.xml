@@ -5,7 +5,12 @@
       <map>
         <entry key="../../../../layout/custom_preview.xml" value="0.27870370370370373" />
         <entry key="app/containerview/src/main/res/mipmap-anydpi-v26/ic_launcher.xml" value="0.26974358974358975" />
-        <entry key="app/src/main/res/layout/activity_main.xml" value="0.2649254457949969" />
+        <entry key="app/src/main/res/drawable/circle_bg.xml" value="0.23703703703703705" />
+        <entry key="app/src/main/res/drawable/ic_launcher_background.xml" value="0.23703703703703705" />
+        <entry key="app/src/main/res/drawable/rect_bg.xml" value="0.23703703703703705" />
+        <entry key="app/src/main/res/layout/activity_main.xml" value="0.15126418113871687" />
+        <entry key="app/src/main/res/layout/circle_view.xml" value="0.5579151554161174" />
+        <entry key="app/src/main/res/layout/rect_view.xml" value="0.24583333333333332" />
       </map>
     </option>
   </component>

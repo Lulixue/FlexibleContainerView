@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.Resources
 import android.graphics.Color
 import android.graphics.Rect
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.View
@@ -34,9 +35,6 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
         private val Int.dp
             get() = this.toFloat().dp
 
-        private val Int.rect
-            get() = Rect(this, this, this, this)
-
         private const val VIEW_NEW_LINE = "NewLine"
         fun getSeparatorView(context: Context, height: Int): View {
             return View(context).apply {
@@ -51,8 +49,8 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
         private val DEFAULT_ITEM_SPACING = 3.dp.toInt()
         private val DEFAULT_LINE_SPACING = 5.dp.toInt()
     }
-    private val childrenBounds = mutableListOf<Rect>()
-    private val childrenBoundMap = LinkedHashMap<Int, ArrayList<Rect>>()
+    private val childrenBounds = mutableListOf<RectF>()
+    private val childrenBoundMap = LinkedHashMap<Int, ArrayList<RectF>>()
     private val childrenBoundMaxHeight = LinkedHashMap<Int, Int>()
     var itemSpacing: Int = DEFAULT_ITEM_SPACING
         set(value) {
@@ -121,15 +119,15 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
 
     override fun addView(child: View, index: Int, params: LayoutParams?) {
         super.addView(child, index, params)
-        childrenBounds.add(Rect())
+        childrenBounds.add(RectF())
         child.setVisible(false)
     }
 
-    private fun getMapChildren(index: Int) : ArrayList<Rect> {
+    private fun getMapChildren(index: Int) : ArrayList<RectF> {
         if (childrenBoundMap.containsKey(index)) {
             return childrenBoundMap[index]!!
         }
-        val newChildren = ArrayList<Rect>()
+        val newChildren = ArrayList<RectF>()
         childrenBoundMap[index] = newChildren
         return newChildren
     }
@@ -145,10 +143,10 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
         val specWidthSize = MeasureSpec.getSize(widthMeasureSpec)       // 父view宽度
         val specWidthMode = MeasureSpec.getMode(widthMeasureSpec)       // 父view宽度模式
 
-        var maxWidthUsed = paddingStart
-        var heightUsed = paddingTop
-        var lineWidthUsed = paddingStart
-        var lineMaxHeight = 0
+        var maxWidthUsed: Int = paddingStart
+        var heightUsed: Int = paddingTop
+        var lineWidthUsed: Int = paddingStart
+        var lineMaxHeight: Int = 0
         var mapIndex = 0
 
         childrenBoundMap.clear()
@@ -193,10 +191,10 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
             measuredHeight = child.measuredHeight
             val childBounds = childrenBounds[index]
             childBounds.set(
-                lineWidthUsed,
-                heightUsed,
-                lineWidthUsed + measuredWidth,
-                heightUsed + measuredHeight
+                lineWidthUsed.toFloat(),
+                heightUsed.toFloat(),
+                (lineWidthUsed + measuredWidth).toFloat(),
+                (heightUsed + measuredHeight).toFloat()
             )
             getMapChildren(mapIndex).add(childBounds)
             lineWidthUsed += measuredWidth + itemSpacing
@@ -225,13 +223,13 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
             val maxHeight = childrenBoundMaxHeight[index]!!
             for (bound in bounds) {
                 if (bound.height() < maxHeight) {
-                    bound.top += (maxHeight - bound.height()) / 2
-                    bound.bottom += (maxHeight - bound.height()) / 2
+                    bound.top += (maxHeight - bound.height()) / 2.0F
+                    bound.bottom += (maxHeight - bound.height()) / 2.0F
                 }
             }
-            val offset: Int = when (contentAlignment) {
+            val offset: Float = when (contentAlignment) {
                 ContentAlignment.Center -> {
-                    (selfWidth - bounds.last().right) / 2
+                    (selfWidth - paddingEnd - bounds.last().right) / 2f
                 }
                 ContentAlignment.End -> {
                     (selfWidth - bounds.last().right - paddingEnd)
@@ -256,7 +254,8 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
                 return
             }
             val bound = childrenBounds[child.index]
-            child.value.layout(bound.left, bound.top, bound.right, bound.bottom)
+            child.value.layout(bound.left.toInt(), bound.top.toInt(),
+                                    bound.right.toInt(), bound.bottom.toInt())
         }
     }
 
