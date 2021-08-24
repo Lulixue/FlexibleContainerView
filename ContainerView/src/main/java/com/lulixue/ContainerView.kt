@@ -27,17 +27,15 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
         End(2)
     }
     companion object {
-        private val DisplayWidth: Int
-            get() = Resources.getSystem().displayMetrics.widthPixels
         private val Float.dp
             get() = TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP, this, Resources.getSystem().displayMetrics
             )
+        private val Int.dp
+            get() = this.toFloat().dp
         private fun View.setVisible(visible: Boolean) {
             this.visibility = if (visible) VISIBLE else GONE
         }
-        private val Int.dp
-            get() = this.toFloat().dp
 
         private const val DEFAULT_LOAD_MORE_TEXT = "More..."
         private const val DEFAULT_INIT_LAZY_ITEM_SIZE = 150
@@ -56,7 +54,7 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
         private val DEFAULT_ITEM_SPACING = 3.dp.toInt()
         private val DEFAULT_LINE_SPACING = 5.dp.toInt()
     }
-    private val lazyLoadViews = LinkedHashMap<View, Boolean>()
+    private val lazyLoadViews = ArrayList<WeakReference<View>>()
     private val childrenBounds = mutableListOf<RectF>()
     private val childrenBoundMap = LinkedHashMap<Int, ArrayList<RectF>>()
     private val childrenBoundMaxHeight = LinkedHashMap<Int, Int>()
@@ -156,10 +154,6 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
         super.addView(child, index, params)
         childrenBounds.add(RectF())
         child.setVisible(false)
-
-        if (enableLazyLoading) {
-            lazyLoadViews[child] = true
-        }
     }
 
     private fun getMapChildren(index: Int) : ArrayList<RectF> {
@@ -174,9 +168,12 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
     fun loadMore() {
         removeView(loadMoreView)
         var addedCount = 0
-        for ((view, added) in lazyLoadViews) {
-            if (!added) {
-                addView(view)
+        val leftViews = ArrayList<WeakReference<View>>()
+        leftViews.addAll(lazyLoadViews)
+        for (value in leftViews) {
+            lazyLoadViews.remove(value)
+            value.get()?.also {
+                addView(it)
                 addedCount ++
                 if (addedCount >= lazyLoadMoreItemSize) {
                     addView(loadMoreView)
@@ -197,16 +194,15 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
                     addView = false
                 }
                 continue
-            }
-            if (enableLazyLoading) {
-                lazyLoadViews[view] = false
+            } else {
+                lazyLoadViews.add(WeakReference(view))
             }
         }
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val specWidthSize = MeasureSpec.getSize(widthMeasureSpec)       // 父view宽度
-        val specWidthMode = MeasureSpec.getMode(widthMeasureSpec)       // 父view宽度模式
+        val specWidthSize = MeasureSpec.getSize(widthMeasureSpec)       // parent view width
+        val specWidthMode = MeasureSpec.getMode(widthMeasureSpec)       // parent view width mode
 
         var maxWidthUsed: Int = paddingStart
         var heightUsed: Int = paddingTop
@@ -248,9 +244,6 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
                     leftWidth = specWidthSize - (paddingEnd + lineWidthUsed)
                 }
             }
-            if (child == loadMoreView) {
-                (child.layoutParams as MarginLayoutParams).marginStart = (leftWidth - child.measuredWidth)
-            }
 
             measuredWidth = child.measuredWidth
             measuredHeight = child.measuredHeight
@@ -267,8 +260,8 @@ class ContainerView(context: Context, attrs: AttributeSet?) : ViewGroup(context,
             measuredView.setVisible(true)
 
             if (enableLazyLoading) {
-                lazyLoadViews[child] = true
-                if (measuredView == loadMoreView) {
+                if (child == loadMoreView) {
+                    (child.layoutParams as MarginLayoutParams).marginStart = (leftWidth - child.measuredWidth)
                     break
                 }
             }

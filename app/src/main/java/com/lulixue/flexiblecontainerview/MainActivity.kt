@@ -1,16 +1,18 @@
 package com.lulixue.flexiblecontainerview
 
+import android.annotation.SuppressLint
+import android.content.res.Resources
 import android.graphics.Color
-import android.graphics.drawable.Drawable
 import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
 import android.widget.RadioButton
+import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.android.material.tabs.TabLayout
 import com.lulixue.ContainerView
@@ -65,9 +67,6 @@ class MainActivity : AppCompatActivity() {
     private val radioButtons: Array<RadioButton> by lazy {
         arrayOf(binding.leftRadio, binding.centerRadio, binding.rightRadio)
     }
-    private val rippleBackground: Drawable? by lazy {
-        ContextCompat.getDrawable(this, R.drawable.ripple_effect_corner)
-    }
     private var contentAlignment = ContainerView.ContentAlignment.Start
         set(value) {
             field = value
@@ -116,6 +115,46 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+        binding.itemSpacingSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            @SuppressLint("SetTextI18n")
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val spacing = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,
+                    progress.toFloat(), Resources.getSystem().displayMetrics).toInt()
+                binding.containerView.itemSpacing = spacing
+                binding.nestContainerView.itemSpacing = spacing
+
+                binding.itemSpacingValue.text = "${progress}dp"
+
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {
+            }
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+            }
+        })
+
+        binding.lineSpacingSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            @SuppressLint("SetTextI18n")
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val spacing = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,
+                    progress.toFloat(), Resources.getSystem().displayMetrics).toInt()
+                binding.containerView.lineSpacing = spacing
+                binding.nestContainerView.lineSpacing = spacing
+
+                binding.lineSpacingValue.text = "${progress}dp"
+
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {
+            }
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+            }
+        })
+
+
         binding.tabViewMode.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 val scroll = binding.tabViewMode.selectedTabPosition == 1
@@ -233,9 +272,4 @@ class MainActivity : AppCompatActivity() {
         }
         return views
     }
-
-
-
-
-
 }
